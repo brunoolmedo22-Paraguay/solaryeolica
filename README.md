@@ -1,12 +1,12 @@
-# Energy MultiModel V1.1
+# Energy MultiModel V1.2
 
 Aplicação modular para análise energética de **Solar, Eólica e Térmica**. A tela inicial permite escolher a fonte; cada módulo mantém sua própria física/dinâmica e produz séries temporais e indicadores destinados à futura integração com um otimizador.
 
 - **Solar:** três modelos fotovoltaicos existentes.
 - **Eólica:** curva real de fabricante + condições atmosféricas + potência/energia/FC.
-- **Térmica:** modelo operacional-econômico com **Usina termelétrica** e **Gerador térmico local**.
+- **Térmica:** modelo operacional-econômico com **Usina termelétrica de grande porte** e **Pequena unidade geradora**.
 
-Veja `README_EOLICA_V1.md` e `README_TERMICA_V1.1.md` para os módulos adicionais.
+Veja `README_EOLICA_V1.md` e `README_TERMICA_V1.2.md` para os módulos adicionais.
 
 ---
 

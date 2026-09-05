@@ -164,11 +164,11 @@ igual a 1 W, evitando divisões numericamente instáveis durante a noite.
 
 ---
 
-## 6. Modelo térmico operacional-econômico V1.1
+## 6. Modelo térmico operacional-econômico V1.2
 
 O módulo térmico não representa a termodinâmica interna da planta. Sua fronteira é operacional e econômica.
 
-### 6.1 Usina termelétrica
+### 6.1 Usina termelétrica de grande porte
 
 ```text
 P_alvo(t) = max[P_solicitada(t), P_inflex(t)]
@@ -179,7 +179,7 @@ C_var(t) = P_entregue(t) · Δt · CVU
 São reportadas violações de inflexibilidade, Pmax, mínimo técnico e rampas opcionais.
 A potência solicitada original é preservada para diagnóstico; a aplicação mostra separadamente o alvo contratual e a potência considerada para energia/custo.
 
-### 6.2 Gerador térmico local
+### 6.2 Pequena unidade geradora
 
 ```text
 P_entregue(t) = min[P_solicitada(t), Pmax]

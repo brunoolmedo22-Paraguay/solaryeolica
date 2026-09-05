@@ -1,9 +1,9 @@
-# Módulo Térmico V1.1
+# Módulo Térmico V1.2
 
 O módulo térmico é um modelo **operacional-econômico**, não um simulador termodinâmico de caldeira/turbina.
 Ele foi desenhado para fornecer ao futuro EMS/otimizador potência disponível, factibilidade, energia e custo.
 
-## Dinâmica 1 — Usina termelétrica
+## Dinâmica 1 — Usina termelétrica de grande porte
 
 Entradas principais:
 
@@ -26,11 +26,11 @@ O programa original não é silenciosamente alterado: os intervalos abaixo da in
 acima de Pmax, abaixo do mínimo técnico ou além das rampas são explicitamente marcados como violações.
 A aplicação também calcula quanto de energia/custo adicional seria necessário para restaurar a inflexibilidade.
 
-## Dinâmica 2 — Gerador térmico local
+## Dinâmica 2 — Pequena unidade geradora
 
 Representa um grupo gerador de backup rápido, por exemplo diesel.
 
-- não possui inflexibilidade na V1.1;
+- não possui inflexibilidade na V1.2;
 - recebe uma curva de potência necessária/solicitada;
 - entrega até `Pmax`;
 - o excesso é contabilizado como potência/energia não atendida;
@@ -58,7 +58,7 @@ Fontes públicas de referência conceitual:
 - ONS Dados Abertos — CVU das Usinas Térmicas: https://dados.ons.org.br/dataset/cvu-usitermica
 - CCEE Dados Abertos — Custo Variável Unitário: https://dadosabertos.ccee.org.br/dataset/custo_variavel_unitario_conjuntural
 
-## Fora do escopo da V1.1
+## Fora do escopo da V1.2
 
 - caldeira / combustão / ciclo Rankine ou Brayton;
 - heat-rate curve;

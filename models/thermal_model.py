@@ -1,17 +1,17 @@
-"""Modelo operacional-econômico térmico V1.1.
+"""Modelo operacional-econômico térmico V1.2.
 
 Duas dinâmicas compartilham o mesmo contrato de entrada:
 
-1) Usina termelétrica: avalia despacho solicitado contra inflexibilidade,
+1) Usina termelétrica de grande porte: avalia despacho solicitado contra inflexibilidade,
    potência máxima, mínimo técnico e rampas opcionais. O custo é calculado
    sobre a potência efetivamente considerada para cumprimento contratual,
    limitada pela capacidade disponível.
 
-2) Gerador térmico local: representa um recurso rápido de backup. Não possui
+2) Pequena unidade geradora: representa um recurso rápido de backup. Não possui
    inflexibilidade por padrão; entrega até Pmax, contabiliza energia não atendida,
    custo variável e custo fixo de cada partida.
 
-A V1.1 não modela caldeira, ciclo termodinâmico, heat-rate, minimum up/down time
+A V1.2 não modela caldeira, ciclo termodinâmico, heat-rate, minimum up/down time
 ou dinâmica eletromecânica detalhada.
 """
 

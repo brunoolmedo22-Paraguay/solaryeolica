@@ -1,4 +1,4 @@
-"""Interface Streamlit do módulo térmico V1.1."""
+"""Interface Streamlit do módulo térmico V1.2."""
 
 from __future__ import annotations
 
@@ -98,19 +98,48 @@ def _header(title: str, eyebrow: str, subtitle: str) -> None:
     )
 
 
+def _set_dynamic(dynamic: str, go_to_simulation: bool = True) -> None:
+    """Seleciona explicitamente a dinâmica térmica e limpa resultados incompatíveis."""
+    if st.session_state.get("thermal_dynamic") != dynamic:
+        st.session_state["thermal_result"] = None
+        st.session_state["thermal_kpis"] = None
+        st.session_state["thermal_source_name"] = None
+        st.session_state["thermal_config"] = None
+    st.session_state["thermal_dynamic"] = dynamic
+    if go_to_simulation:
+        st.session_state["thermal_page"] = THERMAL_SIMULATION
+
+
 def _sidebar() -> str:
     with st.sidebar:
         if st.button("← FONTES DE ENERGIA", key="thermal_back_sources", width="stretch"):
             st.session_state["energy_source"] = None
             st.rerun()
         st.markdown('<div class="thermal-brand"><div class="thermal-mark">🔥</div><div class="thermal-brand-name">TÉRMICA</div><div class="thermal-brand-sub">OPERATION + COST ENGINE</div></div>', unsafe_allow_html=True)
-        st.markdown("**Dinâmica**")
-        dynamic = st.radio(
-            "Tipo de recurso",
-            [THERMAL_PLANT, LOCAL_GENERATOR],
-            format_func=lambda x: DYNAMIC_LABELS[x],
-            key="thermal_dynamic",
-            label_visibility="collapsed",
+
+        st.markdown("**TIPO DE RECURSO TÉRMICO**")
+        current = st.session_state["thermal_dynamic"]
+        if st.button(
+            "🏭  USINA TERMELÉTRICA",
+            key="thermal_mode_plant",
+            type="primary" if current == THERMAL_PLANT else "secondary",
+            width="stretch",
+            help="Grande porte: inflexibilidade/must-run, Pmax, mínimo técnico e rampas opcionais.",
+        ):
+            _set_dynamic(THERMAL_PLANT)
+            st.rerun()
+        if st.button(
+            "🛢️  PEQUENA UNIDADE GERADORA",
+            key="thermal_mode_local",
+            type="primary" if current == LOCAL_GENERATOR else "secondary",
+            width="stretch",
+            help="Grupo gerador diesel, gás ou biogás de respaldo rápido. Sem inflexibilidade.",
+        ):
+            _set_dynamic(LOCAL_GENERATOR)
+            st.rerun()
+
+        st.caption(
+            "Modo ativo: " + DYNAMIC_LABELS[st.session_state["thermal_dynamic"]]
         )
         st.divider()
         page = st.session_state["thermal_page"]
@@ -125,35 +154,58 @@ def _sidebar() -> str:
             st.metric("Energia entregue", f"{k['energy_delivered_mwh']:.2f} MWh")
             st.metric("Custo total", f"R$ {k['total_cost_rs']:,.0f}".replace(",", "."))
             st.metric("FC do período", f"{k['capacity_factor_period']*100:.2f} %")
-        st.caption("V1.1: modelo operacional-econômico; não modela caldeira/ciclo termodinâmico.")
+        st.caption("V1.2: modelo operacional-econômico; não modela caldeira/ciclo termodinâmico.")
         return st.session_state["thermal_page"]
 
-
 def _render_overview() -> None:
-    _header("Térmica · Visão geral", "MODELO OPERACIONAL-ECONÔMICO", "Duas dinâmicas: usina termelétrica e gerador térmico local de respaldo.")
-    with st.container(border=True):
-        st.markdown(
-            """
-            <div class="thermal-hero">
-              <div class="thermal-eyebrow">Fronteira da V1.1</div>
-              <h2>Despacho solicitado → restrições → energia → custo</h2>
-              <p>O módulo não tenta reproduzir combustão, caldeira, turbina ou gerador. Ele representa o que interessa ao EMS: quanto o recurso pode entregar, quais solicitações violam suas regras e quanto custa operar o programa solicitado.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    _header(
+        "Térmica · escolha a dinâmica",
+        "MODELO OPERACIONAL-ECONÔMICO",
+        "Primeiro defina se o recurso é uma usina termelétrica de grande porte ou uma pequena unidade geradora de respaldo.",
+    )
+
+    st.markdown(
+        """
+        <div class="thermal-hero">
+          <div class="thermal-eyebrow">Escolha obrigatória do modelo</div>
+          <h2>Duas dinâmicas operacionais diferentes</h2>
+          <p>Uma usina termelétrica de grande porte pode possuir inflexibilidade contratual, mínimo técnico e limites de rampa. Já uma pequena unidade geradora — por exemplo um grupo diesel de um cliente — é tratada como recurso rápido de respaldo: sem curva de inflexibilidade, com potência máxima, custo de geração e custo de partida opcional.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     c1, c2 = st.columns(2, gap="large")
     with c1:
-        st.markdown('<div class="mode-card"><div class="icon">🏭</div><b>Usina termelétrica</b><p>Possui curva de inflexibilidade/must-run, Pmax, mínimo técnico e rampas opcionais. Quando o programa cai abaixo da inflexibilidade, o modelo sinaliza a violação e calcula a potência mínima necessária para cumprimento.</p></div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("### 🏭 Usina termelétrica de grande porte")
+            st.markdown(
+                "**Para:** turbinas a gás, ciclos combinados, usinas a óleo, carvão etc.\n\n"
+                "**Considera:** curva/valor de inflexibilidade, Pmax, mínimo técnico opcional, rampas opcionais e CVU.\n\n"
+                "Se o despacho solicitado ficar abaixo da inflexibilidade, o período é marcado como violação."
+            )
+            if st.button("USAR MODO USINA TERMELÉTRICA →", key="overview_choose_plant", type="primary", width="stretch"):
+                _set_dynamic(THERMAL_PLANT)
+                st.rerun()
+
     with c2:
-        st.markdown('<div class="mode-card"><div class="icon">🛢️</div><b>Gerador térmico local</b><p>Recurso rápido de contingência. Sem inflexibilidade: recebe uma necessidade de potência, entrega até Pmax e calcula energia, CVU, partidas e custo. Ideal para perguntas do tipo “vale a pena ligar o diesel por 25 minutos para evitar falta de energia?”.</p></div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("### 🛢️ Pequena unidade geradora")
+            st.markdown(
+                "**Para:** grupo gerador diesel, gás, GLP, biogás ou outro equipamento local de respaldo.\n\n"
+                "**Não possui inflexibilidade.** O recurso fica desligado quando não é necessário e pode ser acionado para cobrir um déficit por alguns minutos ou horas.\n\n"
+                "**Considera:** Pmax, CVU, custo de partida opcional, energia atendida e energia não atendida."
+            )
+            if st.button("USAR PEQUENA UNIDADE GERADORA →", key="overview_choose_local", type="primary", width="stretch"):
+                _set_dynamic(LOCAL_GENERATOR)
+                st.rerun()
+
     st.markdown("### Contrato comum com o futuro otimizador")
     st.code(
         "power_requested[t]\nPmax\nCVU\n→ power_delivered[t]\n→ feasibility / violations\n→ energy_mwh\n→ variable_cost_rs\n→ total_cost_rs",
         language="text",
     )
     st.info(SOURCE_NOTE)
-
 
 def _mapping_widget(raw: pd.DataFrame, allow_inflex: bool) -> ThermalInputMapping:
     detected = detect_thermal_columns(raw.columns)
@@ -187,6 +239,11 @@ def _render_simulation() -> None:
     dynamic = st.session_state["thermal_dynamic"]
     label = DYNAMIC_LABELS[dynamic]
     _header(f"Térmica · {label}", "SIMULAÇÃO", "Configure o recurso, carregue o despacho solicitado e avalie custo e factibilidade.")
+
+    if dynamic == THERMAL_PLANT:
+        st.info("🏭 **Modo ativo: Usina termelétrica de grande porte.** Inflexibilidade/must-run habilitada; mínimo técnico e rampas são opcionais.")
+    else:
+        st.info("🛢️ **Modo ativo: Pequena unidade geradora.** Sem inflexibilidade. Pensado para grupo diesel/gás/biogás de respaldo rápido, acionado somente quando necessário.")
 
     top_left, top_right = st.columns([.92, 1.08], gap="large")
     with top_left:
@@ -227,7 +284,7 @@ def _render_simulation() -> None:
                 pmin = 0.0
                 ramp_up = ramp_down = None
                 startup_cost = st.number_input("Custo fixo por partida [R$]", min_value=0.0, value=0.0, step=10.0, help="Opcional. Soma-se ao custo variável sempre que o gerador passa de desligado para ligado.")
-                st.markdown('<div class="thermal-note"><b>Dinâmica rápida.</b> Nesta V1.1 o gerador local não tem inflexibilidade nem rampa limitada por padrão. Se a solicitação superar Pmax, o excedente é contabilizado como energia não atendida.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="thermal-note"><b>Dinâmica rápida.</b> Nesta V1.2 a pequena unidade geradora não tem inflexibilidade nem rampa limitada por padrão. Se a solicitação superar Pmax, o excedente é contabilizado como energia não atendida.</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="thermal-note" style="margin-top:.55rem"><b>CVU acadêmico.</b> O valor real deve ser informado para cada equipamento/usina. Combustível, eficiência, logística, transporte, armazenamento e O&M podem alterar substancialmente o custo.</div>', unsafe_allow_html=True)
 
@@ -321,9 +378,9 @@ def _render_simulation() -> None:
         s4.metric("Energia não atendida", f"{k['energy_unmet_mwh']:.3f} MWh")
         s5.metric("Custo efetivo", f"R$ {k['effective_cost_rs_mwh']:.2f}/MWh")
         if k["energy_unmet_mwh"] > 1e-9:
-            st.markdown(f'<div class="violation-bad"><b>Capacidade insuficiente.</b> O gerador não consegue atender {k["energy_unmet_mwh"]:.3f} MWh do pedido no período.</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="violation-bad"><b>Capacidade insuficiente.</b> A pequena unidade geradora não consegue atender {k["energy_unmet_mwh"]:.3f} MWh do pedido no período.</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="violation-good"><b>O gerador consegue atender integralmente o perfil solicitado dentro de Pmax.</b></div>', unsafe_allow_html=True)
+            st.markdown('<div class="violation-good"><b>A pequena unidade geradora consegue atender integralmente o perfil solicitado dentro de Pmax.</b></div>', unsafe_allow_html=True)
 
     g1, g2 = st.columns(2, gap="large")
     with g1:

@@ -1,4 +1,4 @@
-"""Parâmetros de referência para o módulo térmico V1.1.
+"""Parâmetros de referência para o módulo térmico V1.2.
 
 Os presets de CVU são deliberadamente acadêmicos e editáveis. Eles não devem
 ser interpretados como custo oficial de uma usina específica. O CVU real depende
@@ -15,8 +15,8 @@ THERMAL_PLANT = "thermal_plant"
 LOCAL_GENERATOR = "local_generator"
 
 DYNAMIC_LABELS = {
-    THERMAL_PLANT: "Usina termelétrica",
-    LOCAL_GENERATOR: "Gerador térmico local",
+    THERMAL_PLANT: "Usina termelétrica de grande porte",
+    LOCAL_GENERATOR: "Pequena unidade geradora",
 }
 
 # Valores iniciais apenas para simulação acadêmica. O usuário pode editar todos.
