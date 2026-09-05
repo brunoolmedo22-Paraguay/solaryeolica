@@ -14,12 +14,13 @@ class AppSmokeTest(unittest.TestCase):
     def setUp(self):
         self.app_path = Path(__file__).resolve().parents[1] / "app.py"
 
-    def test_landing_renders_and_has_two_sources(self):
+    def test_landing_renders_and_has_three_sources(self):
         app = AppTest.from_file(str(self.app_path), default_timeout=30).run()
         self.assertEqual(len(app.exception), 0)
         labels = [b.label for b in app.button]
         self.assertIn("ANALISAR SOLAR →", labels)
         self.assertIn("ANALISAR EÓLICA →", labels)
+        self.assertIn("ANALISAR TÉRMICA →", labels)
         self.assertIsNone(app.session_state["energy_source"])
 
     def test_solar_module_still_opens(self):
@@ -49,6 +50,13 @@ class AppSmokeTest(unittest.TestCase):
         next(b for b in app.button if b.label == "Catálogo de aerogeradores").click().run()
         self.assertEqual(len(app.exception), 0)
         self.assertGreaterEqual(len(app.get("plotly_chart")), 1)
+
+    def test_thermal_module_opens(self):
+        app = AppTest.from_file(str(self.app_path), default_timeout=30).run()
+        next(b for b in app.button if b.label == "ANALISAR TÉRMICA →").click().run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(app.session_state["energy_source"], "thermal")
+        self.assertIn("Simulação", [b.label for b in app.button])
 
 
 if __name__ == "__main__":

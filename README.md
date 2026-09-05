@@ -1,4 +1,14 @@
-# Solar MultiModel
+# Energy MultiModel V1.1
+
+Aplicação modular para análise energética de **Solar, Eólica e Térmica**. A tela inicial permite escolher a fonte; cada módulo mantém sua própria física/dinâmica e produz séries temporais e indicadores destinados à futura integração com um otimizador.
+
+- **Solar:** três modelos fotovoltaicos existentes.
+- **Eólica:** curva real de fabricante + condições atmosféricas + potência/energia/FC.
+- **Térmica:** modelo operacional-econômico com **Usina termelétrica** e **Gerador térmico local**.
+
+Veja `README_EOLICA_V1.md` e `README_TERMICA_V1.1.md` para os módulos adicionais.
+
+---
 
 Aplicação Streamlit para estimar a potência fotovoltaica de uma embarcação por
 três modelos de complexidade crescente, executados sobre a mesma entrada e o

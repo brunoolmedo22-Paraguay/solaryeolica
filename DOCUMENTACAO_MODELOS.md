@@ -161,3 +161,38 @@ outro modelo `m`, a diferença temporal apresentada é:
 
 O cálculo é omitido nos instantes em que a potência da referência é menor ou
 igual a 1 W, evitando divisões numericamente instáveis durante a noite.
+
+---
+
+## 6. Modelo térmico operacional-econômico V1.1
+
+O módulo térmico não representa a termodinâmica interna da planta. Sua fronteira é operacional e econômica.
+
+### 6.1 Usina termelétrica
+
+```text
+P_alvo(t) = max[P_solicitada(t), P_inflex(t)]
+P_entregue(t) = min[P_alvo(t), Pmax]
+C_var(t) = P_entregue(t) · Δt · CVU
+```
+
+São reportadas violações de inflexibilidade, Pmax, mínimo técnico e rampas opcionais.
+A potência solicitada original é preservada para diagnóstico; a aplicação mostra separadamente o alvo contratual e a potência considerada para energia/custo.
+
+### 6.2 Gerador térmico local
+
+```text
+P_entregue(t) = min[P_solicitada(t), Pmax]
+E_não_atendida = Σ max[P_solicitada(t)-Pmax, 0] · Δt
+C_total = Σ P_entregue(t) · Δt · CVU + N_partidas · C_partida
+```
+
+Não há inflexibilidade por padrão. O recurso é tratado como backup rápido e cada transição desligado → ligado é contabilizada como partida.
+
+### 6.3 Fator de capacidade do período
+
+```text
+FC_período = E_entregue / (Pmax · T_analisado)
+```
+
+Esse indicador pertence ao horizonte analisado e não é uma propriedade fixa do equipamento.

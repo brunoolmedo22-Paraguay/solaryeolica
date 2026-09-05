@@ -1569,7 +1569,7 @@ def render_source_landing() -> None:
         """,
         unsafe_allow_html=True,
     )
-    c1, c2 = st.columns(2, gap="large")
+    c1, c2, c3 = st.columns(3, gap="large")
     with c1:
         with st.container(border=True):
             st.markdown('<div class="source-icon">☀️</div><div class="source-card-title">SOLAR</div><div class="source-card-copy">Módulo fotovoltaico já consolidado: entrada meteorológica, modelos FV, comparação, KPIs e exportação.</div>', unsafe_allow_html=True)
@@ -1579,9 +1579,15 @@ def render_source_landing() -> None:
                 st.rerun()
     with c2:
         with st.container(border=True):
-            st.markdown('<div class="source-icon">🌬️</div><div class="source-card-title">EÓLICA</div><div class="source-card-copy">Curvas reais de aerogeradores, correção por densidade, perfil semanal de potência, energia e fator de capacidade.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="source-icon">🌬️</div><div class="source-card-title">EÓLICA</div><div class="source-card-copy">Curvas reais de aerogeradores, correção por densidade, perfil temporal de potência, energia e fator de capacidade.</div>', unsafe_allow_html=True)
             if st.button("ANALISAR EÓLICA →", key="choose_wind", type="primary", width="stretch"):
                 st.session_state["energy_source"] = "wind"
+                st.rerun()
+    with c3:
+        with st.container(border=True):
+            st.markdown('<div class="source-icon">🔥</div><div class="source-card-title">TÉRMICA</div><div class="source-card-copy">Modelo operacional-econômico com duas dinâmicas: usina termelétrica com inflexibilidade e gerador térmico local de respaldo.</div>', unsafe_allow_html=True)
+            if st.button("ANALISAR TÉRMICA →", key="choose_thermal", type="primary", width="stretch"):
+                st.session_state["energy_source"] = "thermal"
                 st.rerun()
 
 
@@ -1592,6 +1598,9 @@ if source is None:
 elif source == "wind":
     from wind_app import render_wind_app
     render_wind_app()
+elif source == "thermal":
+    from thermal_app import render_thermal_app
+    render_thermal_app()
 else:
     navigation = sidebar()
     if navigation == NAV_OVERVIEW:
