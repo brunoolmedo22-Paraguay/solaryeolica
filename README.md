@@ -1,4 +1,4 @@
-# Energy MultiModel V1.3
+# Energy MultiModel V1.3.1
 
 Aplicação modular para análise energética de **Solar, Eólica, Térmica, Bateria e H₂ / PEMFC**. A tela inicial permite escolher o recurso; cada módulo mantém sua própria física/dinâmica e produz séries temporais e indicadores destinados à futura integração com um otimizador.
 
@@ -144,7 +144,7 @@ Os modelos 1 e 2 recebem automaticamente `Pnom`, área, NOCT, eficiência e
 `gamma_Pmax` do módulo selecionado. O SDM recebe também os parâmetros elétricos
 e os cinco parâmetros extraídos.
 
-## Módulos Bateria e H₂ adicionados na V1.3
+## Módulos Bateria e H₂ adicionados na V1.3 / correção V1.3.1
 
 ### Bateria
 

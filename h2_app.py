@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from models.numerics import trapezoid_integral
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -98,8 +99,7 @@ def _integrate(y: np.ndarray, ts: pd.Series) -> float:
     if len(y) < 2:
         return 0.0
     x_h = (pd.to_datetime(ts) - pd.to_datetime(ts).iloc[0]).dt.total_seconds().to_numpy(dtype=float) / 3600.0
-    integrator = getattr(np, "trapezoid", np.trapz)
-    return float(integrator(np.asarray(y, dtype=float), x=x_h))
+    return trapezoid_integral(np.asarray(y, dtype=float), x_h)
 
 
 def _compute_kpis(result: pd.DataFrame) -> dict[str, float]:

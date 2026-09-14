@@ -18,6 +18,7 @@ from io import BytesIO, StringIO
 from typing import Iterable
 
 import numpy as np
+from models.numerics import trapezoid_integral
 import pandas as pd
 
 
@@ -359,8 +360,7 @@ def _integrate_energy_wh(power_w: np.ndarray, timestamps: pd.Series | pd.Datetim
     x_h = np.asarray(seconds, dtype=float) / 3600.0
     discharge = np.maximum(np.asarray(power_w, dtype=float), 0.0)
     charge = np.maximum(-np.asarray(power_w, dtype=float), 0.0)
-    integrator = getattr(np, "trapezoid", np.trapz)
-    return float(integrator(discharge, x=x_h)), float(integrator(charge, x=x_h))
+    return trapezoid_integral(discharge, x_h), trapezoid_integral(charge, x_h)
 
 
 def battery_kpis(result: pd.DataFrame) -> dict[str, float]:
