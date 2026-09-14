@@ -1,12 +1,14 @@
-# Energy MultiModel V1.2
+# Energy MultiModel V1.3
 
-Aplicação modular para análise energética de **Solar, Eólica e Térmica**. A tela inicial permite escolher a fonte; cada módulo mantém sua própria física/dinâmica e produz séries temporais e indicadores destinados à futura integração com um otimizador.
+Aplicação modular para análise energética de **Solar, Eólica, Térmica, Bateria e H₂ / PEMFC**. A tela inicial permite escolher o recurso; cada módulo mantém sua própria física/dinâmica e produz séries temporais e indicadores destinados à futura integração com um otimizador.
 
 - **Solar:** três modelos fotovoltaicos existentes.
 - **Eólica:** curva real de fabricante + condições atmosféricas + potência/energia/FC.
 - **Térmica:** modelo operacional-econômico com **Usina termelétrica de grande porte** e **Pequena unidade geradora**.
+- **Bateria:** dois modelos dinâmicos portados dos protótipos MATLAB: **Tremblay–Dessaint / Shepherd** e **circuito equivalente Li-Ion de 2 RC**.
+- **H₂ / PEMFC:** modelo equivalente de aproximadamente **66 kW**, com stack, balance of plant, potência solicitada pelo EMS, dinâmica, consumo de H₂ e eficiência.
 
-Veja `README_EOLICA_V1.md` e `README_TERMICA_V1.2.md` para os módulos adicionais.
+Veja `README_EOLICA_V1.md`, `README_TERMICA_V1.2.md` e `DOCUMENTACAO_BATERIA_H2.md` para os módulos adicionais.
 
 ---
 
@@ -142,6 +144,18 @@ Os modelos 1 e 2 recebem automaticamente `Pnom`, área, NOCT, eficiência e
 `gamma_Pmax` do módulo selecionado. O SDM recebe também os parâmetros elétricos
 e os cinco parâmetros extraídos.
 
+## Módulos Bateria e H₂ adicionados na V1.3
+
+### Bateria
+
+O módulo recebe `timestamp,current_A`, usa a convenção positiva para descarga e negativa para carga, e permite configurar o arranjo `Ns × Np` e o SOC inicial. O modelo Tremblay oferece as quatro químicas do protótipo recebido; o modelo 2RC usa a célula Li-Ion 18650 de 2,35 Ah parametrizada no script de Zhang et al. (2017).
+
+### H₂ / PEMFC
+
+O módulo recebe `timestamp,P_FC_requested_kW` e executa a cadeia dinâmica do modelo PEMFC de aproximadamente 66 kW. Retorna potência entregue, déficit, corrente, tensão, estado operacional, consumo de H₂, eficiência, auxiliares e flags de limitação.
+
+Os exemplos `perfil_bateria_exemplo_10s.csv` e `perfil_h2_pemfc_exemplo.csv` estão em `Dados_exemplo/`.
+
 ## Instalação local
 
 Requer Python 3.10 a 3.12.
@@ -194,6 +208,8 @@ Os testes verificam:
 - modo degradado sem temperatura;
 - contrato do CSV;
 - consistência dos KPIs e da exportação;
+- modelos de bateria Tremblay e 2RC;
+- execução do núcleo PEMFC/H₂ por potência solicitada;
 - inicialização da interface Streamlit.
 
 ## Estrutura

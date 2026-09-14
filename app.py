@@ -1,4 +1,4 @@
-"""Solar MultiModel — três modelos fotovoltaicos em uma única interface."""
+"""Energy MultiModel — biblioteca modular Solar, Eólica, Térmica, Bateria e H₂."""
 
 from __future__ import annotations
 
@@ -1556,15 +1556,15 @@ def render_source_landing() -> None:
           .source-shell { max-width:1120px; margin:4vh auto 0; }
           .source-eyebrow { color:#16788B; font-size:.72rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; text-align:center; }
           .source-title { color:#14232D; font-size:2.35rem; font-weight:930; letter-spacing:-.045em; text-align:center; margin:.28rem 0 .4rem; }
-          .source-copy { color:#667984; font-size:.92rem; line-height:1.6; text-align:center; max-width:740px; margin:0 auto 1.35rem; }
+          .source-copy { color:#667984; font-size:.92rem; line-height:1.6; text-align:center; max-width:800px; margin:0 auto 1.35rem; }
           .source-card-title { font-size:1.28rem; font-weight:900; color:#172A35; margin:.2rem 0 .25rem; }
-          .source-card-copy { color:#6B7D87; font-size:.78rem; line-height:1.5; min-height:62px; }
+          .source-card-copy { color:#6B7D87; font-size:.78rem; line-height:1.5; min-height:64px; }
           .source-icon { font-size:2.5rem; line-height:1; }
         </style>
         <div class="source-shell">
           <div class="source-eyebrow">Energy MultiModel · Biblioteca modular</div>
-          <div class="source-title">QUAL FONTE DESEJA ANALISAR?</div>
-          <div class="source-copy">Selecione o recurso energético. Cada módulo mantém sua própria física, entradas e indicadores, mas entrega séries temporais prontas para futura integração com o otimizador.</div>
+          <div class="source-title">QUAL RECURSO DESEJA ANALISAR?</div>
+          <div class="source-copy">Selecione o recurso energético. Cada módulo mantém sua própria física, entradas e indicadores, mas entrega séries temporais compatíveis com a futura integração ao otimizador central.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1572,7 +1572,7 @@ def render_source_landing() -> None:
     c1, c2, c3 = st.columns(3, gap="large")
     with c1:
         with st.container(border=True):
-            st.markdown('<div class="source-icon">☀️</div><div class="source-card-title">SOLAR</div><div class="source-card-copy">Módulo fotovoltaico já consolidado: entrada meteorológica, modelos FV, comparação, KPIs e exportação.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="source-icon">☀️</div><div class="source-card-title">SOLAR</div><div class="source-card-copy">Módulo fotovoltaico consolidado: entrada meteorológica, modelos FV, comparação, KPIs e exportação.</div>', unsafe_allow_html=True)
             if st.button("ANALISAR SOLAR →", key="choose_solar", type="primary", width="stretch"):
                 st.session_state["energy_source"] = "solar"
                 st.session_state["current_page"] = NAV_OVERVIEW
@@ -1585,9 +1585,23 @@ def render_source_landing() -> None:
                 st.rerun()
     with c3:
         with st.container(border=True):
-            st.markdown('<div class="source-icon">🔥</div><div class="source-card-title">TÉRMICA</div><div class="source-card-copy">Modelo operacional-econômico com duas dinâmicas: usina termelétrica com inflexibilidade e gerador térmico local de respaldo.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="source-icon">🔥</div><div class="source-card-title">TÉRMICA</div><div class="source-card-copy">Modelo operacional-econômico com duas dinâmicas: usina termelétrica com inflexibilidade e gerador térmico local.</div>', unsafe_allow_html=True)
             if st.button("ANALISAR TÉRMICA →", key="choose_thermal", type="primary", width="stretch"):
                 st.session_state["energy_source"] = "thermal"
+                st.rerun()
+
+    c4, c5 = st.columns(2, gap="large")
+    with c4:
+        with st.container(border=True):
+            st.markdown('<div class="source-icon">🔋</div><div class="source-card-title">BATERIA</div><div class="source-card-copy">Armazenamento dinâmico com dois modelos: Tremblay–Dessaint/Shepherd e circuito equivalente Li-Ion de 2 RC.</div>', unsafe_allow_html=True)
+            if st.button("ANALISAR BATERIA →", key="choose_battery", type="primary", width="stretch"):
+                st.session_state["energy_source"] = "battery"
+                st.rerun()
+    with c5:
+        with st.container(border=True):
+            st.markdown('<div class="source-icon">💧</div><div class="source-card-title">H₂ / PEMFC</div><div class="source-card-copy">Fuel cell PEM: stack nominal 66 kW / sistema 50 kW, despacho por potência solicitada, dinâmica, eficiência e consumo de H₂.</div>', unsafe_allow_html=True)
+            if st.button("ANALISAR H₂ →", key="choose_h2", type="primary", width="stretch"):
+                st.session_state["energy_source"] = "h2"
                 st.rerun()
 
 
@@ -1601,6 +1615,12 @@ elif source == "wind":
 elif source == "thermal":
     from thermal_app import render_thermal_app
     render_thermal_app()
+elif source == "battery":
+    from battery_app import render_battery_app
+    render_battery_app()
+elif source == "h2":
+    from h2_app import render_h2_app
+    render_h2_app()
 else:
     navigation = sidebar()
     if navigation == NAV_OVERVIEW:
