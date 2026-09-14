@@ -14,13 +14,15 @@ class AppSmokeTest(unittest.TestCase):
     def setUp(self):
         self.app_path = Path(__file__).resolve().parents[1] / "app.py"
 
-    def test_landing_renders_and_has_three_sources(self):
+    def test_landing_renders_and_has_five_sources(self):
         app = AppTest.from_file(str(self.app_path), default_timeout=30).run()
         self.assertEqual(len(app.exception), 0)
         labels = [b.label for b in app.button]
         self.assertIn("ANALISAR SOLAR →", labels)
         self.assertIn("ANALISAR EÓLICA →", labels)
         self.assertIn("ANALISAR TÉRMICA →", labels)
+        self.assertIn("ANALISAR BATERIA →", labels)
+        self.assertIn("ANALISAR H₂ →", labels)
         self.assertIsNone(app.session_state["energy_source"])
 
     def test_solar_module_still_opens(self):
@@ -56,6 +58,20 @@ class AppSmokeTest(unittest.TestCase):
         next(b for b in app.button if b.label == "ANALISAR TÉRMICA →").click().run()
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(app.session_state["energy_source"], "thermal")
+        self.assertIn("Simulação", [b.label for b in app.button])
+
+    def test_battery_module_opens(self):
+        app = AppTest.from_file(str(self.app_path), default_timeout=30).run()
+        next(b for b in app.button if b.label == "ANALISAR BATERIA →").click().run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(app.session_state["energy_source"], "battery")
+        self.assertIn("Simulação", [b.label for b in app.button])
+
+    def test_h2_module_opens(self):
+        app = AppTest.from_file(str(self.app_path), default_timeout=30).run()
+        next(b for b in app.button if b.label == "ANALISAR H₂ →").click().run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(app.session_state["energy_source"], "h2")
         self.assertIn("Simulação", [b.label for b in app.button])
 
 
