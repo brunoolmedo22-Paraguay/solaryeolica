@@ -7,6 +7,8 @@ import pandas as pd
 
 from h2_pemfc import Equivalent65kWHorizonDynamicModel
 from h2_pemfc.ems_input import build_example_ems_profile, prepare_ems_profile
+from models import battery_model as battery_model_module
+from models.numerics import trapezoid_integral
 from models.battery_model import (
     battery_kpis,
     build_battery_example,
@@ -54,6 +56,27 @@ class H2ModelTests(unittest.TestCase):
         self.assertGreater(result["P_FC_delivered_kW"].max(), 0)
         self.assertGreater(result["hydrogen_supplied_kg_h"].max(), 0)
         self.assertTrue(np.isfinite(result["V_stack_V"]).all())
+
+
+class NumPyCompatibilityTests(unittest.TestCase):
+    def test_integrators_work_when_numpy_trapz_is_absent(self):
+        # Reproduz o ambiente do Streamlit Cloud com NumPy 2.5+, que removeu np.trapz.
+        had_trapz = hasattr(np, "trapz")
+        saved_trapz = getattr(np, "trapz", None)
+        if had_trapz:
+            delattr(np, "trapz")
+        try:
+            ts = pd.Series(pd.date_range("2026-09-14 08:00:00", periods=3, freq="1h"))
+            x_h = (ts - ts.iloc[0]).dt.total_seconds().to_numpy(dtype=float) / 3600.0
+            self.assertAlmostEqual(trapezoid_integral(np.array([0.0, 10.0, 10.0]), x_h), 15.0, places=9)
+            discharge, charge = battery_model_module._integrate_energy_wh(
+                np.array([100.0, -100.0, 100.0]), ts
+            )
+            self.assertAlmostEqual(discharge, 100.0, places=9)
+            self.assertAlmostEqual(charge, 100.0, places=9)
+        finally:
+            if had_trapz:
+                setattr(np, "trapz", saved_trapz)
 
 
 if __name__ == "__main__":
