@@ -134,6 +134,55 @@ def detect_operation_columns(columns) -> dict[str, str | None]:
     return detect_columns(columns, OPERATION_ALIASES)
 
 
+def detect_disabled_source_inputs(
+    operation_raw: pd.DataFrame | None,
+    climate_raw: pd.DataFrame | None,
+    enabled_sources: Mapping[str, bool],
+) -> list[str]:
+    """Informa quando os CSVs contêm dados de uma fonte desativada.
+
+    A configuração do MIX sempre prevalece sobre o conteúdo dos arquivos: uma
+    fonte desligada não é simulada, mesmo que o CSV traga sua coluna/variável.
+    """
+    found: dict[str, tuple[str, list[str]]] = {}
+
+    if operation_raw is not None:
+        detected = detect_operation_columns(operation_raw.columns)
+        for src, semantic in (("thermal", "thermal_kw"), ("battery", "battery_kw"), ("h2", "h2_kw")):
+            if enabled_sources.get(src):
+                continue
+            col = detected.get(semantic)
+            if col:
+                found[src] = ("CSV operacional", [col])
+
+    if climate_raw is not None:
+        detected = detect_climate_columns(climate_raw.columns)
+        if not enabled_sources.get("solar") and detected.get("ghi"):
+            cols = [detected.get("ghi"), detected.get("temperature")]
+            found["solar"] = ("CSV climático", [c for c in cols if c])
+        if not enabled_sources.get("wind") and detected.get("wind_speed"):
+            cols = [
+                detected.get("wind_speed"), detected.get("wind_direction"),
+                detected.get("pressure"), detected.get("humidity"),
+            ]
+            found["wind"] = ("CSV climático", [c for c in cols if c])
+
+    messages: list[str] = []
+    for src in SOURCE_ORDER:
+        if src not in found:
+            continue
+        origin, cols = found[src]
+        unique_cols = list(dict.fromkeys(cols))
+        col_text = ", ".join(f"'{c}'" for c in unique_cols)
+        messages.append(
+            f"Foi detectada informação de {SOURCE_LABELS[src]} no {origin} ({col_text}), "
+            "mas o modelo está desativado e não possui configuração nesta execução. "
+            "Revise a página Configuração de fontes se desejar utilizá-lo. "
+            "O MIX seguirá sem considerar essa fonte."
+        )
+    return messages
+
+
 def _decode_bytes(data: bytes) -> str:
     for encoding in ("utf-8-sig", "utf-8", "latin-1"):
         try:
@@ -197,12 +246,20 @@ def prepare_operation(raw: pd.DataFrame, mapping: Mapping[str, str | None], enab
         "battery_kw": "P_battery_requested_kW",
         "h2_kw": "P_H2_requested_kW",
     }
-    required = {
-        "thermal_kw": bool(enabled_sources.get("thermal")),
-        "battery_kw": bool(enabled_sources.get("battery")),
-        "h2_kw": bool(enabled_sources.get("h2")),
+    semantic_source = {
+        "thermal_kw": "thermal",
+        "battery_kw": "battery",
+        "h2_kw": "h2",
     }
+    required = {semantic: bool(enabled_sources.get(src)) for semantic, src in semantic_source.items()}
     for semantic, target in semantic_to_target.items():
+        source = semantic_source.get(semantic)
+        if source is not None and not enabled_sources.get(source):
+            # A configuração é soberana: dados de fonte desligada são ignorados
+            # completamente, inclusive se a coluna existir ou contiver valores inválidos.
+            out[target] = 0.0
+            continue
+
         col = mapping.get(semantic)
         if col and col in raw.columns:
             values = _numeric(raw[col])
@@ -210,7 +267,7 @@ def prepare_operation(raw: pd.DataFrame, mapping: Mapping[str, str | None], enab
                 raise ValueError(f"Operação: a coluna {col!r} contém valores não numéricos/vazios.")
             out[target] = values.to_numpy(dtype=float)
         elif required.get(semantic, False):
-            label = SOURCE_LABELS[{"thermal_kw": "thermal", "battery_kw": "battery", "h2_kw": "h2"}[semantic]]
+            label = SOURCE_LABELS[semantic_source[semantic]]
             raise ValueError(f"Fonte {label} ativa, mas sua potência solicitada não foi mapeada no CSV operacional.")
         else:
             out[target] = np.nan if semantic == "demand_total_kw" else 0.0
@@ -246,9 +303,20 @@ def prepare_climate(raw: pd.DataFrame, mapping: Mapping[str, str | None], enable
         "pressure": "pressure_hPa",
         "humidity": "humidity_pct",
     }
+    field_enabled = {
+        "ghi": bool(enabled_sources.get("solar")),
+        "temperature": bool(enabled_sources.get("solar") or enabled_sources.get("wind")),
+        "wind_speed": bool(enabled_sources.get("wind")),
+        "wind_direction": bool(enabled_sources.get("wind")),
+        "pressure": bool(enabled_sources.get("wind")),
+        "humidity": bool(enabled_sources.get("wind")),
+    }
     for semantic, target in fields.items():
         col = mapping.get(semantic)
-        out[target] = _numeric(raw[col]).to_numpy(dtype=float) if col and col in raw.columns else np.nan
+        if field_enabled[semantic] and col and col in raw.columns:
+            out[target] = _numeric(raw[col]).to_numpy(dtype=float)
+        else:
+            out[target] = np.nan
 
     if enabled_sources.get("solar"):
         if out["GHI_W_m2"].isna().any():
@@ -409,6 +477,7 @@ def run_mix(
     if not any(bool(enabled_sources.get(src)) for src in SOURCE_ORDER):
         raise ValueError("Ative pelo menos uma fonte no MIX.")
 
+    messages: list[str] = detect_disabled_source_inputs(operation_raw, climate_raw, enabled_sources)
     operation = prepare_operation(operation_raw, operation_mapping, enabled_sources)
     climate_needed = bool(enabled_sources.get("solar") or enabled_sources.get("wind"))
     if climate_needed:
@@ -423,7 +492,6 @@ def run_mix(
     base["P_demand_kW"] = operation["P_demand_kW"].to_numpy(dtype=float)
     source_results: dict[str, pd.DataFrame] = {}
     source_kpis: dict[str, dict[str, Any]] = {}
-    messages: list[str] = []
     step_h = _step_hours(base["timestamp"])
 
     # Solar: modelo 2 (NOCT + eficiência) fixo no MIX, conforme decisão de projeto.
@@ -665,12 +733,34 @@ def run_mix(
     )
 
 
+def _column_source(column: str) -> str | None:
+    low = str(column).lower()
+    if "solar" in low:
+        return "solar"
+    if "wind" in low:
+        return "wind"
+    if "thermal" in low:
+        return "thermal"
+    if "battery" in low:
+        return "battery"
+    if low.startswith("p_h2") or low.startswith("h2_"):
+        return "h2"
+    return None
+
+
 def available_export_columns(result: pd.DataFrame) -> list[str]:
-    return list(result.columns)
+    enabled = result.attrs.get("enabled_sources")
+    if not isinstance(enabled, Mapping):
+        return list(result.columns)
+    return [
+        col for col in result.columns
+        if (src := _column_source(col)) is None or bool(enabled.get(src))
+    ]
 
 
 def default_export_columns(result: pd.DataFrame) -> list[str]:
-    return [col for col in DEFAULT_EXPORT_COLUMNS if col in result.columns]
+    available = set(available_export_columns(result))
+    return [col for col in DEFAULT_EXPORT_COLUMNS if col in available]
 
 
 def build_export_dataframe(result: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
