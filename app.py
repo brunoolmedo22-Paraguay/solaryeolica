@@ -1590,7 +1590,7 @@ def render_source_landing() -> None:
                 st.session_state["energy_source"] = "thermal"
                 st.rerun()
 
-    c4, c5 = st.columns(2, gap="large")
+    c4, c5, c6 = st.columns(3, gap="large")
     with c4:
         with st.container(border=True):
             st.markdown('<div class="source-icon">🔋</div><div class="source-card-title">BATERIA</div><div class="source-card-copy">Armazenamento dinâmico com dois modelos: Tremblay–Dessaint/Shepherd e circuito equivalente Li-Ion de 2 RC.</div>', unsafe_allow_html=True)
@@ -1602,6 +1602,12 @@ def render_source_landing() -> None:
             st.markdown('<div class="source-icon">💧</div><div class="source-card-title">H₂ / PEMFC</div><div class="source-card-copy">Fuel cell PEM: stack nominal 66 kW / sistema 50 kW, despacho por potência solicitada, dinâmica, eficiência e consumo de H₂.</div>', unsafe_allow_html=True)
             if st.button("ANALISAR H₂ →", key="choose_h2", type="primary", width="stretch"):
                 st.session_state["energy_source"] = "h2"
+                st.rerun()
+    with c6:
+        with st.container(border=True):
+            st.markdown('<div class="source-icon">🔀</div><div class="source-card-title">MIX</div><div class="source-card-copy">Execução coordenada de múltiplas fontes sobre uma única proposta operacional: clima, despacho, resposta física, balanço e exportação configurável.</div>', unsafe_allow_html=True)
+            if st.button("ANALISAR MIX →", key="choose_mix", type="primary", width="stretch"):
+                st.session_state["energy_source"] = "mix"
                 st.rerun()
 
 
@@ -1621,6 +1627,9 @@ elif source == "battery":
 elif source == "h2":
     from h2_app import render_h2_app
     render_h2_app()
+elif source == "mix":
+    from mix_app import render_mix_app
+    render_mix_app()
 else:
     navigation = sidebar()
     if navigation == NAV_OVERVIEW:
