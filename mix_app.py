@@ -35,6 +35,7 @@ from simulation.mix_engine import (
     build_export_dataframe,
     default_export_columns,
     detect_climate_columns,
+    detect_disabled_source_inputs,
     detect_operation_columns,
     read_csv_auto,
     run_mix,
@@ -147,9 +148,20 @@ def _sidebar() -> str:
         return page
 
 
+def _invalidate_mix_result() -> None:
+    """Descarta resultados que ficaram incompatíveis após alterar fontes ativas."""
+    st.session_state["mix_result"] = None
+    st.session_state["mix_run_config"] = None
+
+
 def _source_toggle_card(src: str, description: str, key: str) -> bool:
     with st.container(border=True):
-        enabled = st.toggle(SOURCE_LABELS[src], value=bool(st.session_state.get(key, True)), key=key)
+        enabled = st.toggle(
+            SOURCE_LABELS[src],
+            value=bool(st.session_state.get(key, True)),
+            key=key,
+            on_change=_invalidate_mix_result,
+        )
         st.caption(description)
         return bool(enabled)
 
@@ -446,6 +458,10 @@ def _render_input() -> None:
         st.info("Solar/Eólica ativa: carregue também o CSV climático.")
         return
 
+    ignored_messages = detect_disabled_source_inputs(operation, climate, enabled)
+    for message in ignored_messages:
+        st.warning(message)
+
     st.markdown("### Mapeamento das colunas")
     op_detected = detect_operation_columns(operation.columns)
     op_cols = list(operation.columns)
@@ -570,15 +586,19 @@ def _render_results() -> None:
     df = result.dataframe
     has_demand = df["P_demand_kW"].notna().all()
 
-    q1, q2, q3, q4, q5 = st.columns(5)
-    q1.metric("Energia renovável", f"{_integrated_kwh(df, 'P_renewable_kW'):.2f} kWh")
-    q2.metric("Energia térmica", f"{_integrated_kwh(df, 'P_thermal_delivered_kW'):.2f} kWh")
-    q3.metric("Energia H₂", f"{_integrated_kwh(df, 'P_H2_delivered_kW'):.2f} kWh")
-    q4.metric("Bateria · líquido", f"{_integrated_kwh(df, 'P_battery_delivered_kW'):.2f} kWh")
-    if has_demand:
-        q5.metric("Demanda", f"{_integrated_kwh(df, 'P_demand_kW'):.2f} kWh")
-    else:
-        q5.metric("Pontos", str(len(df)))
+    enabled_run = dict(df.attrs.get("enabled_sources") or {})
+    metrics: list[tuple[str, str]] = []
+    if enabled_run.get("solar") or enabled_run.get("wind"):
+        metrics.append(("Energia renovável", f"{_integrated_kwh(df, 'P_renewable_kW'):.2f} kWh"))
+    if enabled_run.get("thermal"):
+        metrics.append(("Energia térmica", f"{_integrated_kwh(df, 'P_thermal_delivered_kW'):.2f} kWh"))
+    if enabled_run.get("h2"):
+        metrics.append(("Energia H₂", f"{_integrated_kwh(df, 'P_H2_delivered_kW'):.2f} kWh"))
+    if enabled_run.get("battery"):
+        metrics.append(("Bateria · líquido", f"{_integrated_kwh(df, 'P_battery_delivered_kW'):.2f} kWh"))
+    metrics.append(("Demanda", f"{_integrated_kwh(df, 'P_demand_kW'):.2f} kWh") if has_demand else ("Pontos", str(len(df))))
+    for slot, (label, value) in zip(st.columns(len(metrics)), metrics):
+        slot.metric(label, value)
 
     if has_demand:
         b1, b2, b3, b4 = st.columns(4)
@@ -594,24 +614,26 @@ def _render_results() -> None:
             st.info(message)
 
     st.plotly_chart(_power_figure(df), width="stretch", config=CHART_CONFIG)
-    st.plotly_chart(_requested_delivered_figure(df), width="stretch", config=CHART_CONFIG)
+    if any(enabled_run.get(src) for src in ("thermal", "battery", "h2")):
+        st.plotly_chart(_requested_delivered_figure(df), width="stretch", config=CHART_CONFIG)
 
     if has_demand:
-        c1, c2 = st.columns(2, gap="large")
+        if enabled_run.get("battery"):
+            c1, c2 = st.columns(2, gap="large")
+        else:
+            c1, c2 = st.container(), None
         with c1:
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=df["timestamp"], y=df["P_excess_kW"], mode="lines", name="Excedente"))
             fig.add_trace(go.Scatter(x=df["timestamp"], y=df["P_deficit_kW"], mode="lines", name="Déficit"))
             fig.update_layout(title="Excedente e déficit", xaxis_title="Tempo", yaxis_title="kW", margin={"l":20,"r":20,"t":45,"b":20})
             st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
-        with c2:
-            if df["SOC_battery_pct"].notna().any():
+        if c2 is not None:
+            with c2:
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=df["timestamp"], y=df["SOC_battery_pct"], mode="lines", name="SOC"))
                 fig.update_layout(title="Estado de carga da bateria", xaxis_title="Tempo", yaxis_title="SOC [%]", margin={"l":20,"r":20,"t":45,"b":20})
                 st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
-            else:
-                st.info("Bateria não ativa nesta execução.")
 
     source_kpis = result.source_kpis
     if source_kpis:
@@ -624,7 +646,8 @@ def _render_results() -> None:
             st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", height=360)
 
     with st.expander("Tabela consolidada", expanded=False):
-        st.dataframe(df, hide_index=True, width="stretch", height=480)
+        visible_columns = available_export_columns(df)
+        st.dataframe(df[visible_columns], hide_index=True, width="stretch", height=480)
 
 
 def _safe_filename(value: str) -> str:
