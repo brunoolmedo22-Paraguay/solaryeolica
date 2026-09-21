@@ -105,3 +105,37 @@ def test_mix_without_total_demand_does_not_invent_balance():
     assert result.dataframe["P_balance_kW"].isna().all()
     assert result.dataframe["curtailment_required"].eq(False).all()
     assert any("Demanda total não informada" in msg for msg in result.messages)
+
+
+def test_disabled_sources_are_ignored_even_when_csv_contains_their_columns():
+    operation, climate = build_example_inputs()
+    operation = operation.iloc[:21].copy()
+    climate = climate[climate["timestamp"] <= operation["timestamp"].max()].copy()
+
+    # A coluna existe, mas deve ser completamente ignorada porque Térmica está OFF.
+    operation["P_termica_requested_kW"] = "IGNORAR"
+    enabled = {src: src == "solar" for src in SOURCE_ORDER}
+    config = {
+        "solar": {
+            "module_key": "CS7L-580MS" if "CS7L-580MS" in MODULE_DB else list(MODULE_DB)[0],
+            "n_series": 2,
+            "n_parallel": 3,
+            "soiling_losses_pct": 0.0,
+        }
+    }
+    result = run_mix(
+        operation,
+        climate,
+        operation_mapping=detect_operation_columns(operation.columns),
+        climate_mapping=detect_climate_columns(climate.columns),
+        enabled_sources=enabled,
+        config=config,
+    )
+
+    df = result.dataframe
+    assert df["P_thermal_requested_kW"].eq(0.0).all()
+    assert df["P_thermal_delivered_kW"].eq(0.0).all()
+    assert "thermal" not in result.source_results
+    assert any("Térmica" in msg and "desativado" in msg for msg in result.messages)
+    assert any("Eólica" in msg and "desativado" in msg for msg in result.messages)
+    assert "P_thermal_requested_kW" not in default_export_columns(df)
